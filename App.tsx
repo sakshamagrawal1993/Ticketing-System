@@ -14,23 +14,31 @@ const App: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState<TicketStatus | 'All'>('All');
   const [viewMode, setViewMode] = useState<ViewMode>('dashboard');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Initial load
   useEffect(() => {
-    setTickets(getTickets());
+    const fetchTickets = async () => {
+      setIsLoading(true);
+      const data = await getTickets();
+      setTickets(data);
+      setIsLoading(false);
+    };
+    fetchTickets();
   }, []);
 
   const handleLogin = (username: string) => {
     setUser({ username, role: 'operator' });
   };
 
-  const handleUpdateTicket = (updatedTicket: Ticket) => {
-    saveTicket(updatedTicket);
+  const handleUpdateTicket = async (updatedTicket: Ticket) => {
+    // Optimistic update
     setTickets(prev => prev.map(t => t.id === updatedTicket.id ? updatedTicket : t));
+    await saveTicket(updatedTicket);
   };
 
-  const handleCreateTicket = (title: string, description: string, customerName: string) => {
-    const newTicket = createNewTicket(title, description, customerName);
+  const handleCreateTicket = async (title: string, description: string, customerName: string) => {
+    const newTicket = await createNewTicket(title, description, customerName);
     setTickets(prev => [newTicket, ...prev]);
     setSelectedTicketId(newTicket.id);
     setViewMode('dashboard'); // Switch back to dashboard to see the new ticket
@@ -88,7 +96,11 @@ const App: React.FC = () => {
 
       {/* Main Layout */}
       <main className="flex-1 flex overflow-hidden">
-        {viewMode === 'dashboard' ? (
+        {isLoading ? (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+          </div>
+        ) : viewMode === 'dashboard' ? (
           <>
             <TicketList 
               tickets={tickets}
