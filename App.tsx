@@ -5,7 +5,7 @@ import { TicketDetail } from './components/TicketDetail';
 import { StatsView } from './components/StatsView';
 import { CreateTicketModal } from './components/CreateTicketModal';
 import { Ticket, TicketStatus, User, ViewMode } from './types';
-import { getTickets, saveTicket, createNewTicket } from './services/storageService';
+import { getTickets, saveTicket, createNewTicket, authenticateUser } from './services/storageService';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -16,26 +16,32 @@ const App: React.FC = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Initial load
+  // Load tickets only after user is authenticated
   useEffect(() => {
-    const fetchTickets = async () => {
-      setIsLoading(true);
-      try {
-        const data = await getTickets();
-        setTickets(data);
-      } catch (error) {
-        console.error("Critical error loading tickets:", error);
-        // Even if getTickets fails (it shouldn't due to fallback), we ensure app doesn't crash
-        setTickets([]); 
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchTickets();
-  }, []);
+    if (user) {
+      const fetchTickets = async () => {
+        setIsLoading(true);
+        try {
+          const data = await getTickets();
+          setTickets(data);
+        } catch (error) {
+          console.error("Critical error loading tickets:", error);
+          setTickets([]); 
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      fetchTickets();
+    }
+  }, [user]);
 
-  const handleLogin = (username: string) => {
-    setUser({ username, role: 'operator' });
+  const handleLogin = async (username: string, password: string): Promise<boolean> => {
+    const authenticatedUser = await authenticateUser(username, password);
+    if (authenticatedUser) {
+      setUser(authenticatedUser);
+      return true;
+    }
+    return false;
   };
 
   const handleUpdateTicket = async (updatedTicket: Ticket) => {
