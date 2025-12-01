@@ -20,9 +20,16 @@ const App: React.FC = () => {
   useEffect(() => {
     const fetchTickets = async () => {
       setIsLoading(true);
-      const data = await getTickets();
-      setTickets(data);
-      setIsLoading(false);
+      try {
+        const data = await getTickets();
+        setTickets(data);
+      } catch (error) {
+        console.error("Critical error loading tickets:", error);
+        // Even if getTickets fails (it shouldn't due to fallback), we ensure app doesn't crash
+        setTickets([]); 
+      } finally {
+        setIsLoading(false);
+      }
     };
     fetchTickets();
   }, []);
@@ -38,10 +45,14 @@ const App: React.FC = () => {
   };
 
   const handleCreateTicket = async (title: string, description: string, customerName: string) => {
-    const newTicket = await createNewTicket(title, description, customerName);
-    setTickets(prev => [newTicket, ...prev]);
-    setSelectedTicketId(newTicket.id);
-    setViewMode('dashboard'); // Switch back to dashboard to see the new ticket
+    try {
+      const newTicket = await createNewTicket(title, description, customerName);
+      setTickets(prev => [newTicket, ...prev]);
+      setSelectedTicketId(newTicket.id);
+      setViewMode('dashboard'); // Switch back to dashboard to see the new ticket
+    } catch (e) {
+      console.error("Error creating ticket:", e);
+    }
   };
 
   const selectedTicket = tickets.find(t => t.id === selectedTicketId) || null;
@@ -97,8 +108,9 @@ const App: React.FC = () => {
       {/* Main Layout */}
       <main className="flex-1 flex overflow-hidden">
         {isLoading ? (
-          <div className="flex-1 flex items-center justify-center">
+          <div className="flex-1 flex items-center justify-center flex-col gap-4">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+            <p className="text-gray-400 text-sm animate-pulse">Loading tickets...</p>
           </div>
         ) : viewMode === 'dashboard' ? (
           <>
